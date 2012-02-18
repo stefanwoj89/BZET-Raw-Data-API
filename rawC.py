@@ -1,11 +1,37 @@
 #this version does not violate pythons byte stuff. it just makes copies.
 from struct import *
 from ctypes import *
+import sys
+import struct
+ExternalLib = cdll.LoadLibrary('api.dll') #uncomment this to run in windows
+#ExternalLib = cdll.LoadLibrary('./api.so') #uncomment this to run in linux
 
 
-#ExternalLib = cdll.LoadLibrary('api.dll') #uncomment this to run in windows
-ExternalLib = cdll.LoadLibrary('./api.so') #uncomment this to run in linux
+
+bzetv = "v0.3"     # your version number
+vdate = "12-02-17" # date of the version
+
+# This magic gets 2 or 3 for Python2.xx or Python3.xx
+python_v = sys.version_info.major
+# This magic tells if it is a 32 or 64 bit implementation
+python_64bit = 8 * struct.calcsize("P") == 64
+
+
 class Raw:
+    @classmethod
+    def BLevel(mymethod):
+        return 0
+    
+    @classmethod
+    def NewBLevel(mymethod,n):
+        return
+    
+    @classmethod
+    def Version(mymethod):        
+        bv = "32"
+        if python_64bit:
+            bv = "64"
+        return "RawC-" + bv + " " + bzetv + " BL0" + " " + vdate
     MT = ''         # a Bits value of the Empty Bitset
     tbits = type(3)  # the type Bits
     # This MTbytes is the internal Bits.v value

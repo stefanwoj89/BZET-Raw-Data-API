@@ -3,13 +3,84 @@ from struct import *
 from ctypes import *
 import sys
 import struct
-ExternalLib = cdll.LoadLibrary('api.dll') #uncomment this to run in windows
-#ExternalLib = cdll.LoadLibrary('./api.so') #uncomment this to run in linux
+from   os.path import dirname
+
+#lib = cdll.LoadLibrary('./_raw.so') #uncomment this to run in linux
+
+dlldir = dirname(__file__)
+print( "DLL Directory:", dlldir )
+dlldir.replace( '\\', '\\\\' )
+print( "DLL File:", dlldir+'\\_raw.dll' )
+lib = cdll.LoadLibrary(dlldir+'\\_raw.dll')
+
+PBZ = c_void_p
+ULL = c_ulonglong
+
+# Bzet Set a bit Operation
+RAWset = lib.set
+RAWset.argtypes = [ PBZ, ULL ]
+RAWset.restype  = None
+
+# Bzet Unset a bit Operation
+RAWunset = lib.unset
+RAWunset.argtypes = [ PBZ, ULL]
+RAWunset.restype  = None
+
+# Bzet Flip a bit Operation
+RAWflip = lib.flip
+RAWflip.argtypes = [ PBZ, ULL]
+RAWflip.restype  = None
+
+# Bzet Invert Bits Operation (In place)
+RAWinvert = lib.invert
+RAWinvert.argtypes = [ PBZ, ULL ]
+RAWinvert.restype  = None
+
+# Bzet Count Bits Operation
+RAWcount = lib.count
+RAWcount.argtypes = [ PBZ, ULL ]
+RAWcount.restype  = ULL
+
+# Bzet Find First Bit Operation
+RAWfirst = lib.first
+RAWfirst.argtypes = [ PBZ, ULL ]
+RAWfirst.restype  = ULL
+
+# Bzet Find Last Bit Operation
+RAWlast = lib.last
+RAWlast.argtypes = [ PBZ, ULL ]
+RAWlast.restype  = ULL
+
+# Bzet Test bit Operations
+RAWtest = lib.test
+RAWtest.argtypes = [ PBZ, ULL, ULL ]
+RAWtest.restype  = c_int
+
+# Bzet And Operations
+RAWc_and = lib.c_and
+RAWc_and.argtypes = [ PBZ, PBZ, PBZ, ULL ]
+RAWc_and.restype  = None
+
+# Bzet Or Operations
+RAWc_or = lib.c_or
+RAWc_or.argtypes = [ PBZ, PBZ, PBZ, ULL ]
+RAWc_or.restype  = None
+
+# Bzet Xor Operations
+RAWc_xor = lib.c_xor
+RAWc_xor.argtypes = [ PBZ, PBZ, PBZ, ULL ]
+RAWc_xor.restype  = None
+
+# Bzet EQ Operations
+# Test if two bitsets are equal
+RAWc_eq = lib.c_eq
+RAWc_eq.argtypes = [ PBZ, PBZ, ULL ]
+RAWc_eq.restype  = c_int
 
 
 
-bzetv = "v0.3"     # your version number
-vdate = "12-02-17" # date of the version
+bzetv = "v0.4stefan"  # your version number
+vdate = "12-02-20" # date of the version
 
 # This magic gets 2 or 3 for Python2.xx or Python3.xx
 python_v = sys.version_info.major
@@ -32,77 +103,100 @@ class Raw:
         if python_64bit:
             bv = "64"
         return "RawC-" + bv + " " + bzetv + " BL0" + " " + vdate
-    MT = ''         # a Bits value of the Empty Bitset
+    
+    MT = ''          # a Bits value of the Empty Bitset
     tbits = type(3)  # the type Bits
     # This MTbytes is the internal Bits.v value
-    #MTbytes = bytes([0x00,0x00,0x00])
-    MTbytes = bytes(0x00)
+    MTbytes = b''
     # Type constants
     tbytes = type(bytes([]))
     tint   = type(3)
     tbarray= type(bytearray([]))
     tbool  = type(True)
     ttuple = type((0,))
+    
     def getVal(self):
         return self.v
+    
     def LEV(self):
         return int( ceil(log2(len(self.v)*8)) )
+    
     def size(self):
             return len(self.v)
+        
     def HEX(self):
         return str(self.v)
+    
+    def __repr__(self):
+        r = 'L0 len=' + str(len(self.v))
+        for i in range(len(self.v)):
+            if i% 8 == 0: r += ' 0x'
+            c = hex(self.v[i])[2:]
+            if len(c) == 1: c = '0' + c
+            r += c
+            if (i+1)%16 == 0: r += '\n        '
+            
+        if r[-1] == '\n': r = r[:-1]
+        return r
+
+    def __len__(self): return len(self.v) * 8
+    
     def SET(self,x):
         if x < 0 : raise LookupError
-        copy = create_string_buffer(self.v, self.size())
-        if x>>3 > self.size()-1:
-            count = (x>>3) - (self.size()-1);
-            copy =  create_string_buffer(self.v,self.size()+count)
-        ExternalLib.set(copy,x)
-        #print(copy.value)
-        self.v = bytes(copy)
+        slen = self.size()
+        copy = ''
+        if x>>3 > slen-1:
+            count = (x>>3) - (slen-1);
+            copy = create_string_buffer(self.v, self.size()+count)
+        else:
+            copy = create_string_buffer(self.v, self.size())
+        RAWset( byref(copy), x )
+        self.v = bytes(copy.raw[:])
         return self
     
     def UNSET(self,x):
         if x < 0 : raise LookupError
         copy = create_string_buffer(self.v, self.size())
-        ExternalLib.unset(copy,x, self.size())
-        self.v = bytes(copy)
+        RAWunset( byref(copy), x, self.size() )
+        self.v = bytes(copy.raw)
         return self
     
     def FLIP(self,x):
         if x < 0 : raise LookupError
         copy = create_string_buffer(self.v, self.size())
-        ExternalLib.flip(copy,x, self.size())
-        self.v = bytes(copy)
+        RAWflip( byref(copy), x, self.size() )
+        self.v = bytes(copy.raw)
         return self
     
     def INVERT(self):
         copy = create_string_buffer(self.v, self.size())
-        ExternalLib.invert(copy,self.size())
-        self.v = bytes(copy)
+        RAWinvert( byref(copy),self.size() )
+        self.v = bytes(copy.raw)
         return self
     
     def CLEAR(self):
-        copy = create_string_buffer(self.v, self.size())
-        ExternalLib.clear(copy, self.size())
-        self.v = bytes(copy)
+        self.v = MTbytes
         return self
     
     def COUNT(self):
-        return ExternalLib.count(self.v, self.size())
+        return RAWcount(self.v, self.size())
     
-    def FIRST(self): #this is traverses the array left to right.
-        return ExternalLib.first(self.v, self.size())
+    def FIRST(self): #this traverses the array left to right
+        return RAWfirst(self.v, self.size())
             
     def LAST(self): #traverse the array right to left, it is more efficient
-        return ExternalLib.last(self.v, self.size())
+        return RAWlast(self.v, self.size())
     
-    def LIST_T(self):
-        trueList = []
-        for x in range(0,self.size()*8):
+    def LIST_T(self,dstart=0,limit=None):
+        top = limit
+        if limit == None: top = len(self)
+        c = 0
+        for x in range(dstart,len(self)):
             if self.TEST(x):
-                trueList.append(x)
-        return trueList
+                c += 1
+                yield x
+                if c >= top: return
+        return
     
     @staticmethod
     def _align_(bset1, bset2 ):
@@ -119,40 +213,54 @@ class Raw:
         r1.v = copy1[:]
         r2.v = copy2[:]
         return r1,r2
+    
     def TEST(self,x):
-        return bool(ExternalLib.test(self.v,x,self.size()))
+        return bool( RAWtest( self.v, x, self.size()) )
+    
     def RANGE(s,n):
-        r1 = Raw(None) #need to fix this and check abotu the whole None thing...
-        for x in range(s,n+1):
-            r1.SET(x)
-        return r1
+        # s is index of first bit
+        # n is number of bits after that to set
+        # OK this works now you can fix it to make it efficient
+        if n < 0: raise range_error
+        if s < 0: raise index_error
+        size = s + n  # In bits
+        bsize = size>>3
+        if size & 0x7: bsize += 1
+        r = Raw(None)
+        #     size in bytes
+        r.v = bsize * bytes( '\x00', 'utf8' )
+        print( "size is", len(r.v), "r is", r )
+        for x in range(s,s+n):
+            r.SET(x)                  
+        return r
+    
     def AND(self,bset2):
         r1,r2 = self._align_(self,bset2)
-        r3 = Raw(None)
-        r3.lengthen(r1.size())
-        ExternalLib.c_and(r1.v, r2.v,r3.v,r1.size())
-        return r3
-
+        r3 = create_string_buffer(r1.size())
+        RAWc_and( r1.v, r2.v, byref(r3), r1.size() )
+        r = Raw(None)
+        r.v = bytes(r3.raw)
+        return r
 
     def OR(self,bset2):
         r1,r2 = self._align_(self,bset2)
-        r3 = Raw(None)
-        r3.lengthen(r1.size())
-        ExternalLib.c_or(r1.v, r2.v,r3.v,r1.size())
-        return r3
+        r3 = create_string_buffer(r1.size())
+        RAWc_or( r1.v, r2.v, byref(r3), r1.size() )
+        r = Raw(None)
+        r.v = bytes(r3.raw)
+        return r
     
     def XOR(self,bset2):
         r1,r2 = self._align_(self,bset2)
-        r3 = Raw(None)
-        r3.lengthen(r1.size())
-        ExternalLib.c_xor(r1.v, r2.v,r3.v,r1.size())
-        return r3
+        r3 = create_string_buffer(r1.size())
+        RAWc_xor( r1.v, r2.v, byref(r3), r1.size() )
+        r = Raw(None)
+        r.v = bytes(r3.raw)
+        return r
     
     def EQ(self,bset2):
         set1,set2 = self._align_(self,bset2)
-        #print(set1.v,set2.v)
-        isEqual = bool(ExternalLib.c_eq(set1.v,set2.v,set1.size()))
-        return isEqual
+        return bool( RAWc_eq( set1.v, set2.v, set1.size()) )
     
     def lengthen(self,length):
         self.v += bytes(length-self.size())
@@ -160,8 +268,8 @@ class Raw:
     @staticmethod
     def _int_(n):
         copy = create_string_buffer((n>>3)+1)
-        ExternalLib.set(copy,n)
-        newByte = bytes(copy)
+        RAWset( byref(copy), n )
+        newByte = bytes(copy.raw)
         return newByte
 
     def __init__(self, x):
@@ -176,7 +284,7 @@ class Raw:
                     r = r.OR( Raw(ix) )
                 elif type(ix) == self.ttuple and len(ix) == 2:
                     s = ix[0] if ix[0] < ix[1] else ix[1]
-                    n = abs( ix[1])
+                    n = abs( ix[1]-ix[0] )
                     if n > 1:
                         x = Raw.RANGE(s,n)
                         r = r.OR( x )
@@ -190,96 +298,4 @@ class Raw:
 
 Raw.MT    = Raw(None)
 Raw.tbits = type(Raw(None))
-    
-if __name__ =="__main__":
-    def Bitb(x):
-        y = Raw(bytes(x))
-        return y
-    ##################################
-    #                                #
-    #           Test Cases           #
-    #                                #
-    ##################################
-
-    
-    #Test if instantiation is working correctly.
-
-    #Test empty set return
-    #bset1 = Raw(None)
-    #print("Argument 'None' returns: ",bset1.getVal())
-    #Test if Integer argument returns bitset with index of integer value turned on
-    bset1 = Raw([(1,10000)])
-    bset2 = Raw([(1,10000)])
-
-    bset1.INVERT()
-    print("Comparison 1 returns: ",bset1.getVal())
-    bset1.FLIP(1)
-    print("Comparison 2 returns: ",bset1.getVal())
-    bset1.UNSET(2)
-    print("Comparison 3 returns: ",bset1.getVal())
-    bset1.COUNT()
-    print("Comparison 4 returns: ",bset1.getVal())
-    bset1.LAST()
-    print("Comparison 5 returns: ",bset1.getVal())
-    bset1.FIRST()
-    print("Comparison 6 returns: ",bset1.getVal())
-    andResult = bset1.AND(bset2)
-    print("Comparison 7 returns: ",andResult.getVal())
-    orResult = bset1.OR(bset2)
-    print("bset1 is:", bset1.getVal())
-    print("bset2 is:", bset2.getVal())
-    print("Comparison OR returns: ",orResult.getVal())
-    xorResult = bset1.XOR(bset2)
-    print("Comparison 9 returns: ",xorResult.getVal())
-    eqResult = bset1.EQ(bset2)
-    print("Comparison 10 returns: ",eqResult)
-    for i in range (0,10000):
-        bset1.INVERT()
-        bset1.FLIP(1)
-        bset1.UNSET(2)
-        bset1.COUNT()
-        bset1.LAST()
-        bset1.FIRST()
-        andResult = bset1.AND(bset2)
-        orResult = bset1.OR(bset2)
-        xorResult = bset1.XOR(bset2)
-        eqResult = bset1.EQ(bset2)
-
-
-    #Test if Integer list argument turns on specified bits
-    bset1 = Raw([7,15])
-    print("Argument '[7,15]' returns: ",bset1.getVal())
-    #Test if tuple sets all bits inclusively on
-    bset1 = Raw([(7,15)])
-    print("Argument '(7,15)' returns: ",bset1.getVal())
-    print("bits set for argument '(7,15)' returns: ",bset1.LIST_T())
-    #Test if a spec list argument is setting bits on
-    bset2 = Raw([2,30,50, (50,100),101])
-    print("Argument '[2,30,50, (50,100),101]' returns: ",bset2.getVal())
-    print("bits set for argument '[2,30,50, (50,100),101]' returns: ",bset2.LIST_T())
-    
-    #####################################
-    #                                   #
-    #      Test Binary Operations       #
-    #                                   #
-    #####################################
-
-    bset1 = Raw(0)
-    bset2 = Raw(1)
-    andBset = bset1.AND(bset2)
-    print("And result of x01(01) and x02(10): ",andBset.getVal())
-    orBset = bset1.OR(bset2)
-    print("OR result of x01(01) and x02(10): ", orBset.getVal())
-    bset1 = Raw([0,1,2])
-    bset2 = Raw([0])
-    xorBset = bset1.XOR(bset2)
-    print("XOR result of x01(01) and x02(10): ", xorBset.getVal())
-    bset1 = Raw([(5,10)])
-    bset2 = Raw([(5,10)])
-    eqBset = bset1.EQ(bset2)
-    print("EQ result of same instantiation: ", eqBset)
-    bset1 = Raw([(5,10)])
-    bset2 = Raw([(5,10),300])
-    eqBset = bset1.EQ(bset2)
-    print("EQ result of different instantiation: ", eqBset)
     

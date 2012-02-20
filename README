@@ -1,0 +1,36 @@
+Instructions
+
+Linux:
+
+Decompress and edit rawC.py by uncommenting the line:
+
+#lib = cdll.LoadLibrary('./_raw.so') #uncomment this to run in linux
+
+and comment this line:
+
+lib = cdll.LoadLibrary(dlldir+'\\_raw.dll') #comment this line to run in linux
+
+run test code (i.e. python stefan.test.py) must be python 3, 2.x will not work.
+
+
+If it is necessary to compile your own .so, use the following command:
+
+gcc -Wall -Wextra -O -ansi -pedantic -shared raw-bzet.c -o _raw.so
+
+
+Windows:
+
+Decompress and edit run test code (i.e. python stefan.test.py) must be python 3, 2.x will not work.
+
+By default, rawC.py is setup to be run on a Windows platform.
+
+If it is necessary to compile your own dll, use the following procedure:
+
+change directory to c:\... Microsoft Visual Studio/VC/bin
+
+command: cl /LD <directory of raw-bzet.cpp>
+
+This will create a .dll in the  c:\... Microsoft Visual Studio/VC/bin, copy it to the folder where the other 
+source files are.
+
+Run stefan.test.py 

@@ -2,27 +2,22 @@
 #include <string.h>
 #include <stdlib.h>
 #define DLLEXPORT extern "C" __declspec(dllexport)
-#define ull unsigned int
+#define ull unsigned __int64
 #define GetBit(set,index)   set[index>>3] &  0x80>>(index & 0x07)
 #define SetBit(set,index)   set[index>>3] |= 0x80>>(index & 0x07)
 #define UnSetBit(set,index) set[index>>3] &= (0x80>>(index & 0x07)) ^ 0xff
 
-DLLEXPORT void set(char *set, ull x){
-	// If it's out of bounds don't you need to extend the set?
+DLLEXPORT void set(char *set, ull x) {
 	SetBit(set,x);
 	return;
 }
 
 DLLEXPORT void unset(char* set, ull x) {
-	// If it's out of bounds it is already zero so why check?
-	// Just return
 	UnSetBit(set,x);
 	return;
 }
 
-DLLEXPORT void flip(char* set, ull x){
-	// If the current bit is 0 and out of bounds shouldn't
-	// you extend the set and flip the bit?
+DLLEXPORT void flip(char* set, ull x) {
 	if ( GetBit(set,x) )
 		UnSetBit(set,x);
 	else SetBit(set,x);
@@ -36,41 +31,62 @@ DLLEXPORT void invert(char* set, ull len){
 	return;
 }
 
-//DLLEXPORT char* clear(char* set, ull len){
-//	for(ull i = 0; i<len; i++){
-//		set[i] = 0;
-//	}
-//	return set;
-//}
+//                                           10    11    12     13   14    15
+//                                         b1010 b1011 b1100 b1101 b1110 b1111
+//                          x0 x1 x2 x3 x4 x5 x6 x7 x8 x9 xa xb xc xd xe xf
+static char fourbits[16] = { 0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4 }; 
 
-DLLEXPORT ull count(char* set, ull len){
-	ull count = 0;
-	for(ull i = 0; i<(len*8); i++)
-	{	if( GetBit(set,i) )	count++;
-	}
+DLLEXPORT ull count(char* set, const ull len){
+	register ull count = 0;
+	register char byte;
+	for(ull i=0; i<=len; i++)
+	{	byte = set[i];
+		count += fourbits[(byte>>4)&0x0f] + fourbits[byte&0x0f]; }
 	return count;
 
 }
 
-DLLEXPORT ull first(char* set, const ull len){
-	for(ull i = 0; i<(len*8); i++)
-	{	if( GetBit(set,i) )	return i;
-	}
+DLLEXPORT long long first(char* set, const ull len){
+	// Scan bytes for a bit
+	ull i = 0;
+	int found = 0;
+	for( i=0; i<=len; i++)
+	{	if ( set[i] ) {	found = 1; break; }
+		}
+	if ( !found ) return -1;
+
+	// Scan this byte for a bit
+	char byte = set[i];
+	for( int j=0; j < 8; j++ )
+	{	if( byte & (0x80 >>j) )	return i*8+j; }
+
+	// This should never happen
 	return -1;
 }
 
-DLLEXPORT ull last(char* set, const ull len){
-	for(ull i = (len*8)-1; i>=0; i--)
-	{	if ( GetBit(set,i) ) return i;
-	}
+DLLEXPORT long long last(char* set, const long long len){
+	if ( !len ) return -1;
+	// Scan bytes for a bit
+	long long rlen = len-1;
+	long long i;
+	int found = 0;
+	for( i=rlen; i>=0; i--)
+	{	if ( set[i] ) {	found = 1; break; }
+		}
+	if ( !found ) return -1;
+
+	// Scan this byte for a bit
+	char byte = set[i];
+	for( int j=0; j < 8; j++ )
+	{	if( byte & (0x80>>j) )	return i*8+j; }
+
+	// This should never happen
 	return -1;
 }
 
-DLLEXPORT int test(char* set, ull x, ull len){
-	if(x>>3 > (len-1))
-		return 0;
-	if ( GetBit(set,x) )
-		 return 1;
+DLLEXPORT int test(char* set, ull x, const ull len){
+	if ( x>>3 > (len-1))	 return 0;
+	if ( GetBit(set,x) )	 return 1;
 	else return 0;
 
 }
@@ -95,7 +111,7 @@ DLLEXPORT void c_or(char* set1, char* set2, char* returnSet, ull len){
 
 DLLEXPORT void c_xor(char* set1, char* set2, char* returnSet, ull len){
 	for(ull i = 0; i<(len); i++){
-		returnSet[i] = set1[i] ^ set2[i];
+		returnSet[i] = set1[i] ^ set2[i]; 
 	}
 	return;
 }
